@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => ({
       '/top-songs': 'http://127.0.0.1:8888',
       '/weekly-trends': 'http://127.0.0.1:8888',
       '/reflections': 'http://127.0.0.1:8888',
+      '/trends': 'http://127.0.0.1:8888',
     },
   },
   plugins: [
