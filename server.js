@@ -279,15 +279,15 @@ app.get('/user-mood', (req, res) => {
   const today = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth()+1).padStart(2, '0')}-${now.getFullYear()}`;
 
   // Debug logging
-  console.log('DEBUG /user-mood: Looking for date =', today, ', slot =', slot);
-  rows.slice().reverse().forEach(row => {
-    const cols = row.split(',');
-    console.log('  Row:', {
-      date: (cols[dateIdx] || '').trim(),
-      slot: (cols[slotIdx] || '').trim().toLowerCase(),
-      mood: (cols[moodIdx] || '').replace(/"/g, '').trim()
-    });
-  });
+  //console.log('DEBUG /user-mood: Looking for date =', today, ', slot =', slot);
+  //rows.slice().reverse().forEach(row => {
+    //const cols = row.split(',');
+    //console.log('  Row:', {
+      //date: (cols[dateIdx] || '').trim(),
+      //slot: (cols[slotIdx] || '').trim().toLowerCase(),
+      //mood: (cols[moodIdx] || '').replace(/"/g, '').trim()
+    //});
+  //});
 
   // Find the latest row for today and current slot (robust matching)
   const match = rows.reverse().find(row => {
@@ -368,14 +368,29 @@ app.get('/top-songs', (req, res) => {
   const artistIdx = keys.indexOf('Artist(s)');
   const moodIdx = keys.indexOf('Mood_Name');
   if (songIdx === -1 || artistIdx === -1) return res.json({ songs: [] });
-  // Filter by mood, count occurrences
+
+  // Normalize mood for robust matching
+  function normalizeMood(str) {
+    return (str || '')
+      .toLowerCase()
+      .replace(/\s|\+|_|and/gi, '');
+  }
+  const normQueryMood = normalizeMood(mood);
+
+  // Filter by normalized mood, count occurrences
   const songCounts = {};
   rows.forEach(row => {
     const cols = row.split(',');
-    const song = cols[songIdx].replace(/"/g, '').trim();
-    const artist = cols[artistIdx].replace(/"/g, '').trim();
-    const moodName = moodIdx !== -1 ? cols[moodIdx].replace(/"/g, '').trim() : '';
-    if (moodName.includes(mood)) {
+    const song = (cols[songIdx] || '').replace(/"/g, '').trim();
+    const artist = (cols[artistIdx] || '').replace(/"/g, '').trim();
+    const moodName = moodIdx !== -1 ? (cols[moodIdx] || '').replace(/"/g, '').trim() : '';
+    const normCsvMood = normalizeMood(moodName);
+    // Match if moods are equivalent or one contains the other
+    if (
+      normCsvMood === normQueryMood ||
+      normCsvMood.includes(normQueryMood) ||
+      normQueryMood.includes(normCsvMood)
+    ) {
       const key = `${song} - ${artist}`;
       songCounts[key] = (songCounts[key] || 0) + 1;
     }
