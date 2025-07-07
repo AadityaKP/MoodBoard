@@ -406,247 +406,156 @@ app.get('/top-songs', (req, res) => {
 });
 
 // --- Weekly Trends Endpoint ---
-app.get('/weekly-trends', (req, res) => {
-  const csvPath = path.join(__dirname, 'ML', 'user_mood_history.csv');
-  if (!fs.existsSync(csvPath)) return res.json({ trends: [] });
-  const data = fs.readFileSync(csvPath, 'utf8');
-  const [header, ...rows] = data.trim().split('\n');
-  const keys = header.split(',');
-  const moodIdx = keys.indexOf('User_Mood');
-  const timeIdx = keys.indexOf('Timestamp');
-  if (moodIdx === -1 || timeIdx === -1) return res.json({ trends: [] });
-  // Group by day
-  const trendsByDay = {};
-  rows.forEach(row => {
-    const cols = row.split(',');
-    const date = cols[timeIdx].slice(0, 10);
-    const mood = cols[moodIdx].replace(/"/g, '').trim();
-    if (!trendsByDay[date]) trendsByDay[date] = {};
-    trendsByDay[date][mood] = (trendsByDay[date][mood] || 0) + 1;
+app.get('/trends/weekly', (req, res) => {
+  // Always return the current week (Sunday to Saturday)
+  const moodCsvPath = path.join(__dirname, 'csvs', 'time+day+mood.csv');
+  let rows = [];
+  if (fs.existsSync(moodCsvPath)) {
+    const data = fs.readFileSync(moodCsvPath, 'utf8');
+    const [header, ...rest] = data.trim().split('\n');
+    rows = rest;
+  }
+  // Get today and start of week (Sunday)
+  const today = new Date();
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay()); // Sunday
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    return d;
   });
-  // Format as list
-  const trends = Object.entries(trendsByDay).map(([date, moods]) => {
-    const moodStr = Object.entries(moods).map(([m, c]) => `${m}: ${c}`).join(', ');
-    return { date, summary: moodStr, moods };
+  // CSV column indices
+  let dateIdx = 0, timeIdx = 2, moodIdx = 3;
+  if (rows.length > 0) {
+    const header = 'Date,Day,Time of Day,Mood';
+    const keys = header.split(',');
+    dateIdx = keys.findIndex(k => k.toLowerCase().includes('date'));
+    timeIdx = keys.findIndex(k => k.toLowerCase().includes('time'));
+    moodIdx = keys.findIndex(k => k.toLowerCase().includes('mood'));
+  }
+  function normalizeMood(mood) {
+    const m = (mood || '').toLowerCase().replace(/\s|\+/g, '');
+    if (m === 'happycalm') return 'Happy + Calm';
+    if (m === 'happyenergetic') return 'Happy + Energetic';
+    if (m === 'sadcalm') return 'Sad + Calm';
+    if (m === 'sadenergetic') return 'Sad + Energetic';
+    return '';
+  }
+  const week = weekDays.map(d => {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const csvDate = `${dd}-${mm}-${yyyy}`;
+    const isoDay = d.toISOString().slice(0, 10);
+    const dayOfWeek = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const sections = {};
+    ['morning', 'afternoon', 'evening', 'night'].forEach(section => {
+      const found = rows.find(row => {
+        const cols = row.split(',');
+        return (cols[dateIdx] || '').trim() === csvDate && (cols[timeIdx] || '').trim().toLowerCase() === section;
+      });
+      const moodRaw = found ? (found.split(',')[moodIdx] || '').replace(/"/g, '').trim() : '';
+      sections[section] = normalizeMood(moodRaw);
+    });
+    return { day: isoDay, sections, dayOfWeek };
   });
-  res.json({ trends });
+  res.json({ week });
 });
-
-// --- Reflections Endpoint ---
-app.get('/reflections', (req, res) => {
-  if (!fs.existsSync(notesCsv)) return res.json({ reflections: [] });
-  const data = fs.readFileSync(notesCsv, 'utf8');
-  const [header, ...rows] = data.trim().split('\n');
-  const keys = header.split(',');
-  const dateIdx = keys.findIndex(k => k.toLowerCase().includes('date'));
-  const dayIdx = keys.findIndex(k => k.toLowerCase().includes('day'));
-  const slotIdx = keys.findIndex(k => k.toLowerCase().includes('slot') || k.toLowerCase().includes('time of day'));
-  const noteIdx = keys.findIndex(k => k.toLowerCase().includes('note'));
-  const reflections = rows.map(row => {
-    const cols = row.split(',');
-    return {
-      date: (cols[dateIdx] || '').trim(),
-      day: (cols[dayIdx] || '').trim(),
-      time: (cols[slotIdx] || '').trim(),
-      note: (cols[noteIdx] || '').replace(/"/g, '').trim()
-    };
-  });
-  res.json({ reflections });
-});
-
-app.post('/reflections', (req, res) => {
-  const { reflection, date, day, time } = req.body;
-  if (!reflection || !date || !day || !time) return res.status(400).json({ error: 'Missing reflection or context fields' });
-  let csvData = '';
-  if (fs.existsSync(notesCsv)) {
-    csvData = fs.readFileSync(notesCsv, 'utf8');
-  } else {
-    fs.writeFileSync(notesCsv, 'Date,Day,Time of Day,Short Notes\n', 'utf8');
-    csvData = 'Date,Day,Time of Day,Short Notes\n';
-  }
-  const lines = csvData.trim().split('\n');
-  const header = lines[0];
-  let updated = false;
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',');
-    if ((cols[0] || '').replace(/"/g, '').trim() === date &&
-        (cols[1] || '').replace(/"/g, '').trim() === day &&
-        (cols[2] || '').replace(/"/g, '').trim() === time) {
-      // Append to existing note
-      const existingNote = (cols[3] || '').replace(/"/g, '').trim();
-      const newNote = existingNote ? `${existingNote} | ${reflection}` : reflection;
-      lines[i] = `${date},${day},${time},${newNote}`;
-      updated = true;
-      break;
-    }
-  }
-  if (!updated) {
-    lines.push(`${date},${day},${time},${reflection}`);
-  }
-  fs.writeFileSync(notesCsv, lines.join('\n') + '\n', 'utf8');
-  res.json({ success: true });
-});
-
-// --- Background Poller ---
-let currentTrackId = null;
-let alreadyLogged = false;
-const trackPlayInfo = new Map(); // trackId -> { lastLogged: Date, playStart: Date, accumulated: number }
-
-async function pollSpotify() {
-  if (!access_token) return; // Not authenticated yet
-  // Refresh token if needed
-  try {
-    const data = await spotifyApi.refreshAccessToken();
-    access_token = data.body['access_token'];
-    spotifyApi.setAccessToken(access_token);
-  } catch (e) {
-    // Ignore if refresh fails (will try again next time)
-  }
-  try {
-    const playback = await spotifyApi.getMyCurrentPlaybackState();
-    if (playback.body && playback.body.is_playing && playback.body.item) {
-      const track = playback.body.item;
-      const trackId = track.id;
-      const songName = track.name;
-      const artistList = track.artists.map(a => a.name);
-      const artistStr = artistList.join(', ');
-      const now = Date.now();
-      // Track play info
-      let info = trackPlayInfo.get(trackId);
-      if (!info) {
-        info = { lastLogged: 0, playStart: now, accumulated: 0 };
-        trackPlayInfo.set(trackId, info);
-      }
-      // If track changed, reset playStart
-      if (trackId !== currentTrackId) {
-        currentTrackId = trackId;
-        alreadyLogged = false;
-        info.playStart = now;
-        info.accumulated = 0;
-      }
-      // Accumulate play time
-      info.accumulated += 5; // 5 seconds per poll
-      // Only log if played for at least 60s and not logged in last 60s
-      if (!alreadyLogged && info.accumulated >= 60 && (now - info.lastLogged > 60000)) {
-        alreadyLogged = true;
-        info.lastLogged = now;
-        info.accumulated = 0;
-        const timeListened = new Date().toISOString().replace('T', ' ').slice(0, 19);
-        // Find local MP3
-        let foundFilePath = null;
-        const sanitizedSong = sanitize(songName);
-        const sanitizedArtists = artistList.map(sanitize);
-        if (fs.existsSync(playlistFolder)) {
-          for (const file of fs.readdirSync(playlistFolder)) {
-            if (file.toLowerCase().endsWith('.mp3')) {
-              const filename = sanitize(file.replace('.mp3', ''));
-              const songInFile = sanitizedSong.split('from')[0].trim();
-              const songMatch = filename.includes(songInFile) || filename.includes(sanitizedSong);
-              const artistMatch = sanitizedArtists.some(a => filename.includes(a));
-              if (songMatch && artistMatch) {
-                foundFilePath = path.join(playlistFolder, file);
-                break;
-              }
-            }
-          }
-        }
-        if (foundFilePath) {
-          console.log(`🎵 Found local file: ${foundFilePath}`);
-          await analyzeChunks(foundFilePath, { songName, artistStr, timeListened });
-        } else {
-          console.log('❌ No matching local MP3 found.');
-        }
-      }
-    } else {
-      currentTrackId = null;
-      alreadyLogged = false;
-    }
-  } catch (e) {
-    console.error('Spotify poll error:', e.message);
-  }
-}
-setInterval(pollSpotify, 5000);
 
 // --- Trends Day Data Endpoint ---
 app.get('/trends/day', (req, res) => {
-  // Expects ?date=YYYY-MM-DD
+  // Expects ?date=YYYY-MM-DD or DD-MM-YYYY
   const { date } = req.query;
   if (!date) return res.status(400).json({ error: 'No date provided' });
-  // Example: read from trends_day.csv or build from classified_songs.csv
-  // For demo, return random moods
-  const sections = ['morning', 'afternoon', 'evening', 'night'];
-  const moods = ['Happy', 'Sad', 'Energetic', 'Calm'];
-  const data = {};
-  sections.forEach(section => {
-    data[section] = {
-      mood: moods[Math.floor(Math.random() * moods.length)],
-      notes: ''
-    };
-  });
-  res.json({ date, data });
-});
-
-// --- Trends Notes Endpoint ---
-const notesPath = path.join(__dirname, 'trends_notes.csv');
-app.get('/trends/notes', (req, res) => {
-  // ?date=YYYY-MM-DD&section=morning
-  const { date, section } = req.query;
-  if (!date || !section) return res.status(400).json({ error: 'Missing params' });
-  if (!fs.existsSync(notesPath)) return res.json({ note: '' });
-  const data = fs.readFileSync(notesPath, 'utf8');
+  const moodCsvPath = path.join(__dirname, 'csvs', 'time+day+mood.csv');
+  if (!fs.existsSync(moodCsvPath)) return res.json({ date, data: {} });
+  const data = fs.readFileSync(moodCsvPath, 'utf8');
   const [header, ...rows] = data.trim().split('\n');
-  for (const row of rows) {
-    const [rowDate, rowSection, note] = row.split(/,(.+)/);
-    if (rowDate === date && rowSection === section) {
-      return res.json({ note });
-    }
+  const keys = header.split(',');
+  const dateIdx = keys.findIndex(k => k.toLowerCase().includes('date'));
+  const timeIdx = keys.findIndex(k => k.toLowerCase().includes('time'));
+  const moodIdx = keys.findIndex(k => k.toLowerCase().includes('mood'));
+  // Accept both YYYY-MM-DD and DD-MM-YYYY
+  let formattedDate = date;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    // Convert to DD-MM-YYYY
+    const [yyyy, mm, dd] = date.split('-');
+    formattedDate = `${dd}-${mm}-${yyyy}`;
   }
-  res.json({ note: '' });
-});
-app.post('/trends/notes', (req, res) => {
-  const { date, section, note } = req.body;
-  if (!date || !section || !note) return res.status(400).json({ error: 'Missing params' });
-  if (!fs.existsSync(notesPath)) {
-    fs.writeFileSync(notesPath, 'date,section,note\n', 'utf8');
+  const sections = ['morning', 'afternoon', 'evening', 'night'];
+  function normalizeMood(mood) {
+    const m = (mood || '').toLowerCase().replace(/\s|\+/g, '');
+    if (m === 'happycalm') return 'Happy + Calm';
+    if (m === 'happyenergetic') return 'Happy + Energetic';
+    if (m === 'sadcalm') return 'Sad + Calm';
+    if (m === 'sadenergetic') return 'Sad + Energetic';
+    return '';
   }
-  fs.appendFileSync(notesPath, `"${date}","${section}","${note.replace(/"/g, '""')}"\n`, 'utf8');
-  res.json({ success: true });
+  const moodsBySection = {};
+  for (const section of sections) {
+    const found = rows.find(row => {
+      const cols = row.split(',');
+      return (cols[dateIdx] || '').trim() === formattedDate && (cols[timeIdx] || '').trim().toLowerCase() === section;
+    });
+    const moodRaw = found ? (found.split(',')[moodIdx] || '').replace(/"/g, '').trim() : '';
+    moodsBySection[section] = normalizeMood(moodRaw);
+    console.log(`[trends/day] ${section}:`, { formattedDate, moodRaw, normalized: moodsBySection[section] });
+  }
+  console.log('[trends/day] moodsBySection:', moodsBySection);
+  res.json({ date, data: moodsBySection });
 });
 
-// --- Trends Weekly Endpoint ---
-app.get('/trends/weekly', (req, res) => {
-  // Return array of { day: '2025-07-01', sections: { morning: 'Happy', ... } }
-  // For demo, generate random data
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().slice(0, 10);
-  });
-  const moods = ['Happy', 'Sad', 'Energetic', 'Calm'];
-  const sections = ['morning', 'afternoon', 'evening', 'night'];
-  const week = days.map(day => ({
-    day,
-    sections: Object.fromEntries(sections.map(s => [s, moods[Math.floor(Math.random() * moods.length)]]))
-  }));
-  res.json({ week });
+// --- Trends Notes from time+note+day+date.csv Endpoint ---
+const notesCsvPath = path.join(__dirname, 'csvs', 'time+note+day+date.csv');
+app.get('/trends/notes', (req, res) => {
+  // ?date=YYYY-MM-DD or DD-MM-YYYY
+  const { date } = req.query;
+  if (!date) return res.status(400).json({ error: 'No date provided' });
+  if (!fs.existsSync(notesCsvPath)) return res.json({ notes: [] });
+  const data = fs.readFileSync(notesCsvPath, 'utf8');
+  const [header, ...rows] = data.trim().split('\n');
+  const keys = header.split(',');
+  const dateIdx = keys.findIndex(k => k.toLowerCase().includes('date'));
+  const timeIdx = keys.findIndex(k => k.toLowerCase().includes('time'));
+  const noteIdx = keys.findIndex(k => k.toLowerCase().includes('note'));
+  // Accept both YYYY-MM-DD and DD-MM-YYYY
+  let formattedDate = date;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    // Convert to DD-MM-YYYY
+    const [yyyy, mm, dd] = date.split('-');
+    formattedDate = `${dd}-${mm}-${yyyy}`;
+  }
+  const notes = rows.map(row => {
+    const cols = row.split(',');
+    return {
+      date: (cols[dateIdx] || '').trim(),
+      time: (cols[timeIdx] || '').trim(),
+      note: (cols[noteIdx] || '').replace(/"/g, '').trim()
+    };
+  }).filter(n => n.date === formattedDate);
+  res.json({ notes });
 });
 
 // --- Trends Monthly Endpoint ---
 app.get('/trends/monthly', (req, res) => {
-  // Return array of { day: '2025-07-01', sections: { ... } }
-  // For demo, generate random data for 30 days
-  const days = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date();
-    d.setDate(1 + i);
+  // Accept ?month=6&year=2025 (month is 1-based)
+  let { month, year } = req.query;
+  const now = new Date();
+  month = month ? parseInt(month, 10) : now.getMonth() + 1;
+  year = year ? parseInt(year, 10) : now.getFullYear();
+  // Get number of days in the month
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = new Date(year, month - 1, i + 1);
     return d.toISOString().slice(0, 10);
   });
   const moods = ['Happy', 'Sad', 'Energetic', 'Calm'];
   const sections = ['morning', 'afternoon', 'evening', 'night'];
-  const month = days.map(day => ({
+  const monthArr = days.map(day => ({
     day,
     sections: Object.fromEntries(sections.map(s => [s, moods[Math.floor(Math.random() * moods.length)]]))
   }));
-  res.json({ month });
+  res.json({ month: monthArr });
 });
 
 // --- Start Server ---
