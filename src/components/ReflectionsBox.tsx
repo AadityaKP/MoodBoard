@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useDashboardData } from '../hooks/useDashboardData';
 
-const ReflectionsBox = () => {
-  const { userMood, loading, error } = useDashboardData();
+const ReflectionsBox = ({ userMood, loading, error }: any) => {
   const [reflection, setReflection] = useState('');
   const [submitted, setSubmitted] = useState(false);
 

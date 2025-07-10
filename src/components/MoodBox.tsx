@@ -1,5 +1,4 @@
 import React from 'react';
-import { useDashboardData } from '../hooks/useDashboardData';
 
 const MOOD_COLOR_MAP: Record<string, string> = {
   'sad+energetic': 'var(--duke-blue)',
@@ -37,10 +36,7 @@ function MoodBar({ moods }: { moods: string[] }) {
   );
 }
 
-const MoodBox = () => {
-  const { userMood, moodDistribution, loading, error } = useDashboardData();
-  console.log('MoodBox userMood:', userMood);
-
+const MoodBox = ({ userMood, moodDistribution, loading, error }: any) => {
   if (loading) return <div className="rounded-lg p-4 bg-blue-100 text-blue-900 shadow flex flex-col items-center">Loading...</div>;
   if (error) return <div className="rounded-lg p-4 bg-blue-100 text-blue-900 shadow flex flex-col items-center">Error: {error}</div>;
 
@@ -52,7 +48,7 @@ const MoodBox = () => {
     <div className="rounded-lg p-4 bg-blue-100 text-blue-900 shadow flex flex-col items-center">
       <h2 className="text-lg font-bold mb-2">Your Current Mood</h2>
       <div className="text-2xl mb-2">{mood}</div>
-      <MoodBar moods={(moods || [])} />
+      <MoodBar moods={moods || []} />
     </div>
   );
 };
