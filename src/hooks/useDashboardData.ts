@@ -37,7 +37,7 @@ export interface DashboardData {
   error: string | null;
 }
 
-export function useDashboardData(): DashboardData {
+export function useDashboardData(): DashboardData & { refresh: () => void } {
   const [data, setData] = useState<DashboardData>({
     userMood: { user_mood: '', date: '', day: '', time: '' },
     moodDistribution: { moods: [], records: [] },
@@ -49,33 +49,39 @@ export function useDashboardData(): DashboardData {
     error: null,
   });
 
-  useEffect(() => {
-    async function fetchAll() {
-      try {
-        const [userMood, moodDistribution, suggestions, topSongs, weeklyTrends, reflections] = await Promise.all([
-          axios.get('/user-mood'),
-          axios.get('/mood-distribution'),
-          axios.get('/suggestions'),
-          axios.get('/top-songs'),
-          axios.get('/weekly-trends'),
-          axios.get('/reflections'),
-        ]);
-        setData({
-          userMood: userMood.data,
-          moodDistribution: moodDistribution.data,
-          suggestions: suggestions.data,
-          topSongs: topSongs.data,
-          weeklyTrends: weeklyTrends.data,
-          reflections: reflections.data,
-          loading: false,
-          error: null,
-        });
-      } catch (e: any) {
-        setData(d => ({ ...d, loading: false, error: e.message || 'Failed to load dashboard data' }));
-      }
+  const fetchAll = async () => {
+    setData(d => ({ ...d, loading: true }));
+    try {
+      // Fetch user mood first
+      const userMoodRes = await axios.get('/user-mood');
+      const userMood = userMoodRes.data;
+      // Use the full user mood string for top songs
+      const moodParam = encodeURIComponent(userMood.user_mood || '');
+      const [moodDistribution, suggestions, topSongs, weeklyTrends, reflections] = await Promise.all([
+        axios.get('/mood-distribution'),
+        axios.get('/suggestions'),
+        axios.get(`/top-songs?mood=${moodParam}`),
+        axios.get('/weekly-trends'),
+        axios.get('/reflections'),
+      ]);
+      setData({
+        userMood,
+        moodDistribution: moodDistribution.data,
+        suggestions: suggestions.data,
+        topSongs: topSongs.data,
+        weeklyTrends: weeklyTrends.data,
+        reflections: reflections.data,
+        loading: false,
+        error: null,
+      });
+    } catch (e: any) {
+      setData(d => ({ ...d, loading: false, error: e.message || 'Failed to load dashboard data' }));
     }
+  };
+
+  useEffect(() => {
     fetchAll();
   }, []);
 
-  return data;
+  return { ...data, refresh: fetchAll };
 } 

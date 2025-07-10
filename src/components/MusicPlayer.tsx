@@ -1,18 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SkipBack, SkipForward, Music, RefreshCw } from "lucide-react";
 
+interface MusicPlayerProps {
+  onAnalysis?: () => void;
+}
+
 const SERVER_URL = 'http://127.0.0.1:8888';
 
-export default function MusicPlayer() {
+export default function MusicPlayer({ onAnalysis }: MusicPlayerProps) {
   const [accessToken, setAccessToken] = useState(null);
-  const [currentTrack, setCurrentTrack] = useState(null);
+  const [currentTrack, setCurrentTrack] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // For analysis trigger
+  const lastAnalyzedTrack = useRef<string | null>(null);
+  const lastAnalyzedMinute = useRef<number>(-1);
 
   // Listen for access token from popup
   useEffect(() => {
-    const handler = (event) => {
+    const handler = (event: any) => {
       if (event.data && event.data.type === 'SPOTIFY_TOKEN') {
         setAccessToken(event.data.token);
       }
@@ -21,16 +29,20 @@ export default function MusicPlayer() {
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  // Fetch current track
+  // Fetch current track (now also returns progress)
   const getCurrentTrack = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${SERVER_URL}/current`);
+      const res = await fetch(`${SERVER_URL}/current-playback-analysis`);
       const data = await res.json();
       if (data.track) {
         setCurrentTrack(data.track);
       } else {
         setCurrentTrack(null);
+      }
+      // If a song was analyzed or frequency updated, trigger dashboard refresh
+      if (onAnalysis && (data.status === 'analysis_complete' || data.status === 'already_analyzed')) {
+        onAnalysis();
       }
     } finally {
       setIsLoading(false);
@@ -38,7 +50,7 @@ export default function MusicPlayer() {
   };
 
   // Control playback
-  const control = async (action) => {
+  const control = async (action: string) => {
     await fetch(`${SERVER_URL}/control`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -47,11 +59,16 @@ export default function MusicPlayer() {
     setTimeout(getCurrentTrack, 1000);
   };
 
-  // Poll for updates
+  // No need for triggerAnalysisIfNeeded, handled by getCurrentTrack
+
+  // Poll for updates and trigger analysis if needed
   useEffect(() => {
     if (accessToken) {
-      getCurrentTrack();
-      const interval = setInterval(getCurrentTrack, 10000);
+      const poll = async () => {
+        await getCurrentTrack();
+      };
+      poll(); // initial call
+      const interval = setInterval(poll, 30000); // every 30 seconds
       return () => clearInterval(interval);
     }
   }, [accessToken]);
