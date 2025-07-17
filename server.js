@@ -552,7 +552,8 @@ app.get('/current-playback-analysis', async (req, res) => {
               id: track.id,
               name: songName,
               artist: artistStr,
-              analyzed: true
+              analyzed: true,
+              image: track.album?.images?.[0]?.url || null
             };
             analysisInProgress = false;
             analysisLock[lockKey] = false;
@@ -562,7 +563,8 @@ app.get('/current-playback-analysis', async (req, res) => {
                 name: songName,
                 artist: artistStr,
                 progress: progressMs,
-                duration: durationMs
+                duration: durationMs,
+                image: track.album?.images?.[0]?.url || null
               },
               message: 'Song already analyzed, frequency updated'
             });
@@ -586,7 +588,8 @@ app.get('/current-playback-analysis', async (req, res) => {
               name: songName,
               artist: artistStr,
               analyzed: true,
-              mood: finalMood
+              mood: finalMood,
+              image: track.album?.images?.[0]?.url || null
             };
             analysisInProgress = false;
             analysisLock[lockKey] = false;
@@ -596,7 +599,8 @@ app.get('/current-playback-analysis', async (req, res) => {
                 name: songName,
                 artist: artistStr,
                 progress: progressMs,
-                duration: durationMs
+                duration: durationMs,
+                image: track.album?.images?.[0]?.url || null
               },
               mood: finalMood,
               message: 'Song analysis completed successfully'
@@ -611,7 +615,8 @@ app.get('/current-playback-analysis', async (req, res) => {
                 name: songName,
                 artist: artistStr,
                 progress: progressMs,
-                duration: durationMs
+                duration: durationMs,
+                image: track.album?.images?.[0]?.url || null
               },
               message: 'Song file not found in playlist folder'
             });
@@ -627,7 +632,8 @@ app.get('/current-playback-analysis', async (req, res) => {
             name: songName,
             artist: artistStr,
             progress: progressMs,
-            duration: durationMs
+            duration: durationMs,
+            image: track.album?.images?.[0]?.url || null
           },
           message: 'Song already logged/analyzed for this play session.'
         });
@@ -640,7 +646,8 @@ app.get('/current-playback-analysis', async (req, res) => {
           name: songName,
           artist: artistStr,
           progress: progressMs,
-          duration: durationMs
+          duration: durationMs,
+          image: track.album?.images?.[0]?.url || null
         },
         currentTrack: currentTrack,
         message: 'Playback info retrieved'
@@ -966,7 +973,9 @@ app.get('/top-songs', (req, res) => {
 
 // --- Weekly Trends Endpoint ---
 app.get('/trends/weekly', (req, res) => {
-  // Always return the current week (Sunday to Saturday)
+  // Accept ?date=YYYY-MM-DD to get week containing that date
+  const { date } = req.query;
+  
   const moodCsvPath = path.join(__dirname, 'CSVS', 'time+day+mood.csv');
   let rows = [];
   if (fs.existsSync(moodCsvPath)) {
@@ -974,15 +983,31 @@ app.get('/trends/weekly', (req, res) => {
     const [header, ...rest] = data.trim().split('\n');
     rows = rest;
   }
-  // Get today and start of week (Sunday)
-  const today = new Date();
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay()); // Sunday
+  
+  // Determine the target date (either provided date or today)
+  let targetDate;
+  if (date) {
+    targetDate = new Date(date);
+    if (isNaN(targetDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+    console.log('Weekly trends requested for date:', date, 'targetDate:', targetDate);
+  } else {
+    targetDate = new Date();
+    console.log('Weekly trends requested for current date:', targetDate);
+  }
+  
+  // Get start of week (Sunday) for the target date
+  const weekStart = new Date(targetDate);
+  weekStart.setDate(targetDate.getDate() - targetDate.getDay()); // Sunday
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(weekStart.getDate() + i);
     return d;
   });
+  
+  console.log('Week start:', weekStart.toISOString().slice(0, 10));
+  console.log('Week days:', weekDays.map(d => d.toISOString().slice(0, 10)));
   // CSV column indices
   let dateIdx = 0, timeIdx = 2, moodIdx = 3;
   if (rows.length > 0) {
@@ -1141,11 +1166,11 @@ app.get('/trends/notes', (req, res) => {
     formattedDate = `${dd}-${mm}-${yyyy}`;
   }
   const notes = rows.map(row => {
-    const cols = row.split(',');
+    const cols = parseCsvRow(row);
     return {
       date: (cols[dateIdx] || '').trim(),
       time: (cols[timeIdx] || '').trim(),
-      note: (cols[noteIdx] || '').replace(/"/g, '').trim()
+      note: (cols[noteIdx] || '').trim()
     };
   }).filter(n => n.date === formattedDate);
   res.json({ notes });
@@ -1198,21 +1223,63 @@ app.get('/reflections', (req, res) => {
   res.json({ reflections });
 });
 
-// POST /reflections
+// POST /reflections - Add reflection to time+note+day+date.csv
 app.post('/reflections', (req, res) => {
-  const { reflection, date, day, time } = req.body;
-  if (!reflection || !date || !day || !time) return res.status(400).json({ error: 'Missing fields' });
+  const { reflection, date, timeSlot } = req.body;
+  if (!reflection || !date || !timeSlot) {
+    return res.status(400).json({ error: 'Missing fields: reflection, date, timeSlot' });
+  }
+
+  // Convert date from YYYY-MM-DD to DD-MM-YYYY
+  let formattedDate = date;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [yyyy, mm, dd] = date.split('-');
+    formattedDate = `${dd}-${mm}-${yyyy}`;
+  }
+
+  // Get day of week
+  const dateObj = new Date(date);
+  const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+
+  // Read existing CSV
   let csvData = '';
   if (fs.existsSync(reflectionsCsvPath)) {
     csvData = fs.readFileSync(reflectionsCsvPath, 'utf8');
   } else {
-    fs.writeFileSync(reflectionsCsvPath, 'Date,Day,Time,Note\n', 'utf8');
-    csvData = 'Date,Day,Time,Note\n';
+    csvData = 'Date,Day,Time of Day,Short Notes\n';
   }
+
   const lines = csvData.trim().split('\n');
-  lines.push(`${date},${day},${time},${reflection}`);
-  fs.writeFileSync(reflectionsCsvPath, lines.join('\n') + '\n', 'utf8');
-  res.json({ success: true });
+  const [header, ...rows] = lines;
+
+  // Check if entry already exists for this date and time slot
+  let found = false;
+  const updatedRows = rows.map(row => {
+    const cols = parseCsvRow(row);
+    const rowDate = (cols[0] || '').trim();
+    const rowTime = (cols[2] || '').trim();
+    
+    if (rowDate === formattedDate && rowTime.toLowerCase() === timeSlot.toLowerCase()) {
+      found = true;
+      // Append new reflection with | separator
+      const existingNote = (cols[3] || '').trim();
+      const newNote = existingNote ? `${existingNote} | ${reflection}` : reflection;
+      return `"${formattedDate}","${dayOfWeek}","${timeSlot}","${newNote}"`;
+    }
+    return row;
+  });
+
+  if (!found) {
+    // Add new entry
+    updatedRows.push(`"${formattedDate}","${dayOfWeek}","${timeSlot}","${reflection}"`);
+  }
+
+  // Write back to CSV
+  const newCsvData = [header, ...updatedRows].join('\n') + '\n';
+  fs.writeFileSync(reflectionsCsvPath, newCsvData, 'utf8');
+
+  console.log(`[reflections] Added reflection for ${formattedDate} ${timeSlot}: ${reflection}`);
+  res.json({ success: true, message: 'Reflection saved successfully' });
 });
 
 // --- Start Server ---

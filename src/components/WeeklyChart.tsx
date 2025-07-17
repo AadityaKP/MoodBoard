@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useMoodService } from '../hooks/useMoodService';
 import axios from 'axios';
 
 const SECTIONS = ['morning', 'afternoon', 'evening', 'night'];
@@ -23,58 +24,115 @@ function getMoodKey(mood) {
 }
 
 export default function WeeklyChart({ onDayClick, selectedDay }) {
+  const { loading } = useMoodService();
   const [week, setWeek] = useState([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Fetch weekly data for a specific date
+  const fetchWeeklyData = async (date) => {
+    try {
+      setIsRefreshing(true);
+      // Use local date formatting to avoid timezone issues
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      console.log('Fetching weekly data for date:', dateStr);
+      const response = await axios.get('/trends/weekly', { 
+        params: { date: dateStr } 
+      });
+      console.log('Weekly data response:', response.data);
+      setWeek(response.data.week || []);
+    } catch (error) {
+      console.error('Error fetching weekly data:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Refresh weekly data when selectedDay changes
   useEffect(() => {
-    const fetchWeek = async () => {
-      const res = await axios.get('/trends/weekly');
-      setWeek(res.data.week || []);
-    };
-    fetchWeek();
-  }, []);
+    if (selectedDay) {
+      fetchWeeklyData(selectedDay);
+    }
+  }, [selectedDay]);
+
+  // Calculate week range for display
+  const getWeekRange = () => {
+    if (week.length === 0) return '';
+    const startDate = new Date(week[0].day);
+    const endDate = new Date(week[6].day);
+    const startStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endStr = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startStr} - ${endStr}`;
+  };
+
+  if (loading || isRefreshing) {
+    return (
+      <div className="space-y-2 w-full h-full flex flex-col justify-center">
+        <div className="text-center text-xs text-gray-500 mb-2">
+          {isRefreshing ? 'Updating weekly data...' : 'Loading weekly data...'}
+        </div>
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded mb-2"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col items-center w-full h-full justify-center max-h-full">
-      {/* Y-axis labels and bars */}
-      <div className="flex w-full h-[32vh] max-h-[90%] items-center justify-center">
-        {/* Y-axis labels */}
-        <div className="flex flex-col justify-between mr-4 h-full py-2">
-          {SECTION_LABELS.map(label => (
-            <div key={label} className="h-1/4 flex items-center text-xs font-medium text-gray-700" style={{ minHeight: 20 }}>{label}</div>
-          ))}
-        </div>
-        {/* Bars for each day */}
-        <div className="flex-1 flex gap-4 items-end">
-          {week.map(dayObj => {
-            const isSelected = selectedDay.toISOString().slice(0, 10) === dayObj.day;
-            return (
-              <div
-                key={dayObj.day}
-                className={`flex flex-col cursor-pointer rounded-xl shadow-2xl transition-all duration-150 hover:scale-105 ${isSelected ? 'ring-4 ring-purple-400 scale-105' : ''}`}
-                onClick={() => onDayClick(new Date(dayObj.day))}
-                title={dayObj.day}
-                style={{ minWidth: 32 }}
-              >
-                {SECTIONS.map((section, i) => {
-                  const moodKey = getMoodKey(dayObj.sections[section]);
-                  return (
-                    <div
-                      key={section}
-                      className={`w-8 h-12 ${MOOD_COLORS[moodKey] || MOOD_COLORS['unknown']} flex items-center justify-center`}
-                      style={{ minHeight: 32, borderTopLeftRadius: i === 0 ? 8 : 0, borderTopRightRadius: i === 0 ? 8 : 0, borderBottomLeftRadius: i === SECTIONS.length - 1 ? 8 : 0, borderBottomRightRadius: i === SECTIONS.length - 1 ? 8 : 0 }}
-                    ></div>
-                  );
-                })}
-                {/* X-axis label (day of week and day of month) */}
-                <span className={`text-xs mt-1 text-center ${isSelected ? 'font-bold text-purple-700' : ''}`}>{dayObj.dayOfWeek}<br />{dayObj.day.slice(8, 10)}</span>
-              </div>
-            );
-          })}
-        </div>
+    <div className="space-y-2 w-full h-full flex flex-col justify-center">
+      {/* Week range header */}
+      <div className="text-center text-xs text-gray-500 mb-2">
+        {getWeekRange()}
       </div>
-      {/* Move X-axis label closer to bars */}
-      <div className="flex justify-center w-full mt-1">
-        <span className="text-xs text-gray-500">Day of Week</span>
+      
+      {/* Header row with time periods */}
+      <div className="flex items-center">
+        <div className="w-16 text-xs font-medium text-gray-600">Day</div>
+        {SECTIONS.map(section => (
+          <div key={section} className="flex-1 text-xs font-medium text-gray-600 text-center capitalize">
+            {section}
+          </div>
+        ))}
       </div>
+      
+      {/* Data rows */}
+      {week.map(dayObj => {
+        const dayName = new Date(dayObj.day).toLocaleDateString('en-US', { weekday: 'short' });
+        const dayDate = new Date(dayObj.day).getDate();
+        // Use local date formatting for comparison to avoid timezone issues
+        const selectedDateStr = `${selectedDay.getFullYear()}-${String(selectedDay.getMonth() + 1).padStart(2, '0')}-${String(selectedDay.getDate()).padStart(2, '0')}`;
+        const isSelected = selectedDateStr === dayObj.day;
+        
+        return (
+          <div
+            key={dayObj.day}
+            className={`flex items-center cursor-pointer rounded p-1 ${isSelected ? 'ring-2 ring-purple-400 bg-purple-50' : 'hover:bg-gray-50'}`}
+            onClick={() => onDayClick(new Date(dayObj.day))}
+          >
+            <div className={`w-16 text-xs font-medium ${isSelected ? 'text-purple-600' : 'text-gray-700'}`}>
+              {dayName} {dayDate}
+            </div>
+            {SECTIONS.map(section => {
+              const moodKey = getMoodKey(dayObj.sections[section]);
+              return (
+                <div
+                  key={section}
+                  className={`flex-1 h-6 mx-1 rounded ${MOOD_COLORS[moodKey] || MOOD_COLORS['unknown']}`}
+                  title={`${section}: ${dayObj.sections[section] || 'Unknown'}`}
+                />
+              );
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 } 

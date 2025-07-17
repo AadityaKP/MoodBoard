@@ -1,12 +1,15 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTopSongs } from '../hooks/useMoodService';
 
-const TopSongsBox = ({ userMood, topSongs, loading, error }: any) => {
+const TopSongsBox = ({ userMood, loading, error }: any) => {
+  const { topSongs } = useTopSongs();
+  
   if (loading) return <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl"><CardHeader><CardTitle>Loading...</CardTitle></CardHeader></Card>;
   if (error) return <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl"><CardHeader><CardTitle>Error: {error}</CardTitle></CardHeader></Card>;
 
   return (
-    <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl">
+    <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl h-full">
       <CardHeader>
         <CardTitle className="text-xl font-semibold">Your Top {userMood.user_mood} Songs</CardTitle>
       </CardHeader>

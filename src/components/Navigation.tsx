@@ -1,23 +1,51 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 
-export default function Navigation() {
-  const location = useLocation();
+interface SpotifyUser {
+  id: string;
+  display_name: string;
+  images: Array<{ url: string }>;
+}
+
+interface NavigationProps {
+  user: SpotifyUser | null;
+  date: string;
+  day: string;
+  time: string;
+}
+
+export default function Navigation({ user, date, day, time }: NavigationProps) {
   return (
-    <nav className="flex items-center justify-between px-8 py-4 bg-white shadow rounded-b-xl mb-8">
-      <div className="text-2xl font-extrabold text-purple-700 tracking-tight">Dashboard</div>
-      <div className="flex gap-2 bg-gray-100 rounded-full p-1">
-        <Link
-          to="/"
-          className={`px-6 py-2 rounded-full font-semibold transition-colors duration-150 ${location.pathname === '/' ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow' : 'text-purple-700 hover:bg-purple-200'}`}
-        >
-          Home
-        </Link>
-        <Link
-          to="/trends"
-          className={`px-6 py-2 rounded-full font-semibold transition-colors duration-150 ${location.pathname === '/trends' ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow' : 'text-purple-700 hover:bg-purple-200'}`}
-        >
-          Trends
-        </Link>
+    <nav className="flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur-sm shadow-lg rounded-xl mb-4">
+      <div className="text-xl font-bold text-purple-700">MoodBoard</div>
+      
+      {/* Centered Date/Time Info */}
+      <div className="flex items-center space-x-4 text-sm text-gray-600">
+        <span className="font-medium">{date}</span>
+        <span className="text-purple-500">•</span>
+        <span className="font-medium">{day}</span>
+        <span className="text-purple-500">•</span>
+        <span className="font-medium">{time}</span>
+      </div>
+      
+      {/* Spotify User Info */}
+      <div className="flex items-center space-x-3">
+        {user ? (
+          <>
+            <div className="text-right">
+              <div className="text-sm font-medium text-gray-900">{user.display_name}</div>
+              <div className="text-xs text-gray-500">Spotify User</div>
+            </div>
+            {user.images && user.images[0] && (
+              <img 
+                src={user.images[0].url} 
+                alt={user.display_name}
+                className="w-8 h-8 rounded-full border-2 border-purple-200"
+              />
+            )}
+          </>
+        ) : (
+          <div className="text-sm text-gray-500">Not connected to Spotify</div>
+        )}
       </div>
     </nav>
   );
