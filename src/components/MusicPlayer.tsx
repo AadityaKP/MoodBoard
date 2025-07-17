@@ -3,13 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SkipBack, SkipForward, Music, RefreshCw } from "lucide-react";
 
+interface SpotifyUser {
+  id: string;
+  display_name: string;
+  images: Array<{ url: string }>;
+}
+
 interface MusicPlayerProps {
   onAnalysis?: () => void;
+  setUser?: (user: SpotifyUser | null) => void;
 }
 
 const SERVER_URL = 'http://127.0.0.1:8888';
 
-export default function MusicPlayer({ onAnalysis }: MusicPlayerProps) {
+export default function MusicPlayer({ onAnalysis, setUser }: MusicPlayerProps) {
   const [accessToken, setAccessToken] = useState(null);
   const [currentTrack, setCurrentTrack] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,11 +30,32 @@ export default function MusicPlayer({ onAnalysis }: MusicPlayerProps) {
     const handler = (event: any) => {
       if (event.data && event.data.type === 'SPOTIFY_TOKEN') {
         setAccessToken(event.data.token);
+        // Fetch user profile after login
+        if (setUser) {
+          fetchUserProfile(event.data.token);
+        }
       }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, []);
+  }, [setUser]);
+
+  // Fetch Spotify user profile
+  const fetchUserProfile = async (token: string) => {
+    try {
+      const response = await fetch('https://api.spotify.com/v1/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        setUser?.(userData);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   // Fetch current track (now also returns progress)
   const getCurrentTrack = async () => {
@@ -86,7 +114,7 @@ export default function MusicPlayer({ onAnalysis }: MusicPlayerProps) {
   };
 
   return (
-    <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl">
+    <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl h-full">
       <CardHeader>
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
           <Music className="w-5 h-5" />
