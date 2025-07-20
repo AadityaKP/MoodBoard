@@ -102,11 +102,23 @@ async function uploadToReccobeats(mp3Path) {
 
 // --- Helper: Get Current Time Slot ---
 function getCurrentTimeSlot() {
-  const hours = new Date().getHours();
-  if (hours >= 6 && hours < 10) return 'morning';
-  else if (hours >= 10 && hours < 14) return 'afternoon';
-  else if (hours >= 14 && hours < 18) return 'evening';
-  else return 'night';
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  const timeString = now.toLocaleTimeString();
+  console.log(`[getCurrentTimeSlot] Current time: ${timeString} (${hours}:${minutes})`);
+  let timeSlot;
+  if (hours >= 6 && hours < 12) {
+    timeSlot = 'morning';
+  } else if (hours >= 12 && hours < 17) {
+    timeSlot = 'afternoon';
+  } else if (hours >= 17 && hours < 21) {
+    timeSlot = 'evening';
+  } else {
+    timeSlot = 'night';
+  }
+  console.log(`[getCurrentTimeSlot] Returning time slot: ${timeSlot}`);
+  return timeSlot;
 }
 
 // --- Helper: Get Current Date ---
@@ -319,6 +331,7 @@ function aggregateSongMood(songName, artistStr) {
 
 // --- Helper: Update User Mood ---
 function updateUserMood() {
+  console.log('[updateUserMood] Function called');
   const songMoodPath = path.join(CSVS_DIR, 'song_mood.csv');
   const listeningHistoryPath = path.join(CSVS_DIR, 'listening_history.csv');
   const userMoodPath = path.join(CSVS_DIR, 'user_mood.csv');
@@ -345,6 +358,7 @@ function updateUserMood() {
   // Get current time slot and date
   const currentTimeSlot = getCurrentTimeSlot();
   const currentDate = getCurrentDate();
+  console.log(`[updateUserMood] Current time slot: ${currentTimeSlot}, Current date: ${currentDate}`);
   
   // Find songs listened to in current time slot and date
   const currentSessionSongs = historyRows
@@ -936,6 +950,7 @@ app.get('/top-songs', (req, res) => {
 
   // Normalize mood for robust matching
   function normalizeMood(str) {
+    if (!str || str.toLowerCase() === 'unknown') return 'unknown';
     return (str || '')
       .toLowerCase()
       .replace(/\s|\+|_|and/gi, '');
@@ -953,10 +968,20 @@ app.get('/top-songs', (req, res) => {
     
     const normCsvMood = normalizeMood(moodName);
     console.log(`[top-songs] moodName='${moodName}', normCsvMood='${normCsvMood}', normQueryMood='${normQueryMood}'`);
-    // Only match if moods are exactly equivalent
-    if (normCsvMood === normQueryMood) {
-      const key = `${song} - ${artist}`;
-      songScores[key] = (songScores[key] || 0) + frequency;
+    
+    // For "Unknown" mood, show all songs with "Unknown" mood
+    // For other moods, match exactly or show songs with "Unknown" mood as fallback
+    if (normQueryMood === 'unknown') {
+      if (normCsvMood === 'unknown') {
+        const key = `${song} - ${artist}`;
+        songScores[key] = (songScores[key] || 0) + frequency;
+      }
+    } else {
+      // Only match if moods are exactly equivalent
+      if (normCsvMood === normQueryMood) {
+        const key = `${song} - ${artist}`;
+        songScores[key] = (songScores[key] || 0) + frequency;
+      }
     }
   });
   
@@ -977,11 +1002,21 @@ app.get('/trends/weekly', (req, res) => {
   const { date } = req.query;
   
   const moodCsvPath = path.join(__dirname, 'CSVS', 'time+day+mood.csv');
+  const userMoodPath = path.join(__dirname, 'CSVS', 'user_mood.csv');
+  
   let rows = [];
   if (fs.existsSync(moodCsvPath)) {
     const data = fs.readFileSync(moodCsvPath, 'utf8');
     const [header, ...rest] = data.trim().split('\n');
     rows = rest;
+  }
+  
+  // Read current user mood data
+  let userMoodRows = [];
+  if (fs.existsSync(userMoodPath)) {
+    const userMoodData = fs.readFileSync(userMoodPath, 'utf8');
+    const [userMoodHeader, ...userMoodRest] = userMoodData.trim().split('\n');
+    userMoodRows = userMoodRest;
   }
   
   // Determine the target date (either provided date or today)
@@ -1008,7 +1043,8 @@ app.get('/trends/weekly', (req, res) => {
   
   console.log('Week start:', weekStart.toISOString().slice(0, 10));
   console.log('Week days:', weekDays.map(d => d.toISOString().slice(0, 10)));
-  // CSV column indices
+  
+  // CSV column indices for time+day+mood.csv
   let dateIdx = 0, timeIdx = 2, moodIdx = 3;
   if (rows.length > 0) {
     const header = 'Date,Day,Time of Day,Mood';
@@ -1017,6 +1053,17 @@ app.get('/trends/weekly', (req, res) => {
     timeIdx = keys.findIndex(k => k.toLowerCase().includes('time'));
     moodIdx = keys.findIndex(k => k.toLowerCase().includes('mood'));
   }
+  
+  // CSV column indices for user_mood.csv
+  let userDateIdx = 0, userTimeIdx = 1, userMoodIdx = 2;
+  if (userMoodRows.length > 0) {
+    const userMoodHeader = 'Date,Time of Day,Final Mood';
+    const userMoodKeys = userMoodHeader.split(',');
+    userDateIdx = userMoodKeys.findIndex(k => k.toLowerCase().includes('date'));
+    userTimeIdx = userMoodKeys.findIndex(k => k.toLowerCase().includes('time'));
+    userMoodIdx = userMoodKeys.findIndex(k => k.toLowerCase().includes('mood'));
+  }
+  
   function normalizeMood(mood) {
     const m = (mood || '').toLowerCase().replace(/\s|\+/g, '');
     if (m === 'happycalm') return 'Happy + Calm';
@@ -1025,6 +1072,7 @@ app.get('/trends/weekly', (req, res) => {
     if (m === 'sadenergetic') return 'Sad + Energetic';
     return '';
   }
+  
   const week = weekDays.map(d => {
     const dd = String(d.getDate()).padStart(2, '0');
     const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1033,28 +1081,58 @@ app.get('/trends/weekly', (req, res) => {
     const isoDay = d.toISOString().slice(0, 10);
     const dayOfWeek = d.toLocaleDateString('en-US', { weekday: 'short' });
     const sections = {};
+    
     ['morning', 'afternoon', 'evening', 'night'].forEach(section => {
+      // First check time+day+mood.csv
       const found = rows.find(row => {
         const cols = row.split(',');
         return (cols[dateIdx] || '').trim() === csvDate && (cols[timeIdx] || '').trim().toLowerCase() === section;
       });
-      const moodRaw = found ? (found.split(',')[moodIdx] || '').replace(/"/g, '').trim() : '';
+      
+      let moodRaw = '';
+      if (found) {
+        moodRaw = (found.split(',')[moodIdx] || '').replace(/"/g, '').trim();
+      } else {
+        // If not found in time+day+mood.csv, check user_mood.csv for current time slot
+        const userMoodFound = userMoodRows.find(row => {
+          const cols = row.split(',');
+          return (cols[userDateIdx] || '').trim() === csvDate && (cols[userTimeIdx] || '').trim().toLowerCase() === section;
+        });
+        
+        if (userMoodFound) {
+          moodRaw = (userMoodFound.split(',')[userMoodIdx] || '').replace(/"/g, '').trim();
+        }
+      }
+      
       sections[section] = normalizeMood(moodRaw);
     });
+    
     return { day: isoDay, sections, dayOfWeek };
   });
+  
   res.json({ week });
 });
 
 // Alias for /weekly-trends to match frontend expectation
 app.get('/weekly-trends', (req, res) => {
   const moodCsvPath = path.join(__dirname, 'CSVS', 'time+day+mood.csv');
+  const userMoodPath = path.join(__dirname, 'CSVS', 'user_mood.csv');
+  
   let rows = [];
   if (fs.existsSync(moodCsvPath)) {
     const data = fs.readFileSync(moodCsvPath, 'utf8');
     const [header, ...rest] = data.trim().split('\n');
     rows = rest;
   }
+  
+  // Read current user mood data
+  let userMoodRows = [];
+  if (fs.existsSync(userMoodPath)) {
+    const userMoodData = fs.readFileSync(userMoodPath, 'utf8');
+    const [userMoodHeader, ...userMoodRest] = userMoodData.trim().split('\n');
+    userMoodRows = userMoodRest;
+  }
+  
   // Get today and start of week (Sunday)
   const today = new Date();
   const weekStart = new Date(today);
@@ -1064,7 +1142,8 @@ app.get('/weekly-trends', (req, res) => {
     d.setDate(weekStart.getDate() + i);
     return d;
   });
-  // CSV column indices
+  
+  // CSV column indices for time+day+mood.csv
   let dateIdx = 0, timeIdx = 2, moodIdx = 3;
   if (rows.length > 0) {
     const header = 'Date,Day,Time of Day,Mood';
@@ -1073,6 +1152,17 @@ app.get('/weekly-trends', (req, res) => {
     timeIdx = keys.findIndex(k => k.toLowerCase().includes('time'));
     moodIdx = keys.findIndex(k => k.toLowerCase().includes('mood'));
   }
+  
+  // CSV column indices for user_mood.csv
+  let userDateIdx = 0, userTimeIdx = 1, userMoodIdx = 2;
+  if (userMoodRows.length > 0) {
+    const userMoodHeader = 'Date,Time of Day,Final Mood';
+    const userMoodKeys = userMoodHeader.split(',');
+    userDateIdx = userMoodKeys.findIndex(k => k.toLowerCase().includes('date'));
+    userTimeIdx = userMoodKeys.findIndex(k => k.toLowerCase().includes('time'));
+    userMoodIdx = userMoodKeys.findIndex(k => k.toLowerCase().includes('mood'));
+  }
+  
   function normalizeMood(mood) {
     const m = (mood || '').toLowerCase().replace(/\s|\+/g, '');
     if (m === 'happycalm') return 'Happy + Calm';
@@ -1081,6 +1171,7 @@ app.get('/weekly-trends', (req, res) => {
     if (m === 'sadenergetic') return 'Sad + Energetic';
     return '';
   }
+  
   const week = weekDays.map(d => {
     const dd = String(d.getDate()).padStart(2, '0');
     const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1089,16 +1180,35 @@ app.get('/weekly-trends', (req, res) => {
     const isoDay = d.toISOString().slice(0, 10);
     const dayOfWeek = d.toLocaleDateString('en-US', { weekday: 'short' });
     const sections = {};
+    
     ['morning', 'afternoon', 'evening', 'night'].forEach(section => {
+      // First check time+day+mood.csv
       const found = rows.find(row => {
         const cols = row.split(',');
         return (cols[dateIdx] || '').trim() === csvDate && (cols[timeIdx] || '').trim().toLowerCase() === section;
       });
-      const moodRaw = found ? (found.split(',')[moodIdx] || '').replace(/"/g, '').trim() : '';
+      
+      let moodRaw = '';
+      if (found) {
+        moodRaw = (found.split(',')[moodIdx] || '').replace(/"/g, '').trim();
+      } else {
+        // If not found in time+day+mood.csv, check user_mood.csv for current time slot
+        const userMoodFound = userMoodRows.find(row => {
+          const cols = row.split(',');
+          return (cols[userDateIdx] || '').trim() === csvDate && (cols[userTimeIdx] || '').trim().toLowerCase() === section;
+        });
+        
+        if (userMoodFound) {
+          moodRaw = (userMoodFound.split(',')[userMoodIdx] || '').replace(/"/g, '').trim();
+        }
+      }
+      
       sections[section] = normalizeMood(moodRaw);
     });
+    
     return { day: isoDay, sections, dayOfWeek };
   });
+  
   res.json({ week });
 });
 

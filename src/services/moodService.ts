@@ -10,10 +10,10 @@ export interface UserMood {
 }
 
 export interface WeeklyTrend {
-  trends: Array<{
-    date: string;
-    summary: string;
-    moods: Record<string, number>;
+  week: Array<{
+    day: string;
+    sections: Record<string, string>;
+    dayOfWeek: string;
   }>;
 }
 
@@ -63,7 +63,7 @@ const initialState: MoodState = {
     day: '',
     time: ''
   },
-  weeklyTrends: { trends: [] },
+  weeklyTrends: { week: [] },
   dailyMoods: { data: {} },
   dailyNotes: { notes: [] },
   moodDistribution: {},
@@ -212,7 +212,10 @@ class MoodService {
 
   private async fetchTopSongs(): Promise<TopSongs> {
     try {
-      const response = await axios.get('/top-songs');
+      const currentMood = this.state.userMood.user_mood || 'Unknown';
+      const response = await axios.get('/top-songs', { 
+        params: { mood: currentMood } 
+      });
       return response.data;
     } catch (error) {
       console.error('Error fetching top songs:', error);
@@ -275,8 +278,10 @@ class MoodService {
   }
 
   public async refreshWeeklyTrends(date?: string): Promise<void> {
+    console.log('MoodService - refreshWeeklyTrends called with date:', date);
     try {
       const weeklyTrends = await this.fetchWeeklyTrends(date);
+      console.log('MoodService - refreshWeeklyTrends result:', weeklyTrends);
       this.updateState({ weeklyTrends });
     } catch (error) {
       console.error('Error refreshing weekly trends:', error);
@@ -290,6 +295,21 @@ class MoodService {
     try {
       const userMood = await this.fetchUserMood();
       this.updateState({ userMood });
+      
+      // Also refresh top songs since they depend on user mood
+      try {
+        const topSongs = await this.fetchTopSongs();
+        this.updateState({ topSongs });
+      } catch (error) {
+        console.error('Error refreshing top songs after user mood update:', error);
+      }
+      
+      // Also refresh weekly trends to show real-time updates
+      try {
+        await this.refreshWeeklyTrends();
+      } catch (error) {
+        console.error('Error refreshing weekly trends after user mood update:', error);
+      }
     } catch (error) {
       console.error('Error refreshing user mood:', error);
       this.updateState({
@@ -324,6 +344,13 @@ class MoodService {
   public async onMoodUpdate(): Promise<void> {
     // Refresh all data when mood is updated
     await this.refreshAllData();
+    
+    // Also refresh weekly trends specifically to ensure real-time updates
+    try {
+      await this.refreshWeeklyTrends();
+    } catch (error) {
+      console.error('Error refreshing weekly trends after mood update:', error);
+    }
   }
 
   // Cleanup

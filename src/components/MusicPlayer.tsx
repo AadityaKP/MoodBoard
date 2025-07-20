@@ -114,14 +114,12 @@ export default function MusicPlayer({ onAnalysis, setUser }: MusicPlayerProps) {
   };
 
   return (
-    <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl h-full">
-      <CardHeader>
-        <CardTitle className="text-xl font-semibold flex items-center gap-2">
-          <Music className="w-5 h-5" />
-          Spotify Player
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-xl h-[391px]">
+      <div className="p-4">
+        <h2 className="text-xl font-semibold text-purple-600 mb-3 text-center">
+          Music Player
+        </h2>
+        <div className="space-y-4 h-[311px] flex flex-col">
         {!accessToken ? (
           <div className="text-center space-y-4">
             <p className="text-sm text-gray-600">Connect your Spotify account to control playback</p>
@@ -134,7 +132,7 @@ export default function MusicPlayer({ onAnalysis, setUser }: MusicPlayerProps) {
           </div>
         ) : (
           <>
-            <div className="text-center">
+            <div className="text-center flex-1 flex flex-col justify-center">
               {isLoading ? (
                 <div className="flex items-center justify-center space-x-2">
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -154,12 +152,15 @@ export default function MusicPlayer({ onAnalysis, setUser }: MusicPlayerProps) {
                 </div>
               ) : (
                 <>
-                  <h3 className="font-medium text-sm">No track playing</h3>
-                  <p className="text-xs text-gray-600">Start playing music on Spotify</p>
+                  <div className="w-32 h-32 bg-gray-200 rounded-lg mx-auto mb-4 flex items-center justify-center">
+                    <Music className="w-16 h-16 text-gray-400" />
+                  </div>
+                  <h3 className="font-medium text-lg text-gray-700">No track playing</h3>
+                  <p className="text-sm text-gray-500">Start playing music on Spotify</p>
                 </>
               )}
             </div>
-            <div className="flex items-center justify-center space-x-4">
+            <div className="flex items-center justify-center space-x-4 mt-auto">
               <Button variant="ghost" size="sm" onClick={() => control("previous")} disabled={!currentTrack}>
                 <SkipBack className="w-6 h-6" />
               </Button>
@@ -169,7 +170,8 @@ export default function MusicPlayer({ onAnalysis, setUser }: MusicPlayerProps) {
             </div>
           </>
         )}
-      </CardContent>
+        </div>
+      </div>
     </Card>
   );
 }

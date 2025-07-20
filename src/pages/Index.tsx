@@ -9,6 +9,7 @@ import MonthlyCalendar from "@/components/MonthlyCalendar";
 import InsightsBox from "@/components/InsightsBox";
 import DigitalClock from "@/components/DigitalClock";
 import GifBox from "@/components/GifBox";
+import Footer from "@/components/Footer";
 import { useMoodService } from "../hooks/useMoodService";
 
 interface SpotifyUser {
@@ -42,43 +43,50 @@ export default function UnifiedDashboard() {
   }, [refreshDailyData]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 p-1 md:p-2">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 p-1 md:p-2 flex flex-col">
       {/* Header with centered MoodBoard title and Spotify info */}
       <div className="flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur-sm shadow-lg rounded-xl mb-4">
         <div className="flex-1"></div>
-        <div className="text-xl font-bold text-purple-700">MoodBoard</div>
+        <div className="text-center">
+          <div className="text-2xl font-bold text-purple-700">MoodBoard</div>
+          <div className="text-base text-gray-500 mt-1">Your music echoes you</div>
+        </div>
         <div className="flex-1 flex justify-end">
           {/* Spotify User Info */}
           <div className="flex items-center space-x-3">
             {spotifyUser ? (
               <>
                 <div className="text-right">
-                  <div className="text-sm font-medium text-gray-900">{spotifyUser.display_name}</div>
+                  <div className="text-base font-medium text-gray-900">{spotifyUser.display_name}</div>
+                  <div className="text-sm text-gray-500">Connected to Spotify</div>
                 </div>
                 {spotifyUser.images && spotifyUser.images[0] && (
                   <img 
                     src={spotifyUser.images[0].url} 
                     alt={spotifyUser.display_name}
-                    className="w-8 h-8 rounded-full border-2 border-purple-200"
+                    className="w-10 h-10 rounded-full border-2 border-purple-200"
                   />
                 )}
               </>
             ) : (
-              <div className="text-sm text-gray-500">Not connected to Spotify</div>
+              <div className="text-right">
+                <div className="text-base text-gray-500">Not connected to Spotify</div>
+                <div className="text-sm text-gray-400">Login to sync your music</div>
+              </div>
             )}
           </div>
         </div>
       </div>
       
-      <div className="w-full pt-2 pb-4">
+      <div className="w-full pt-2 pb-4 flex-1">
         {/* Main Grid Layout - 5 columns with consistent heights */}
         <div className="grid grid-cols-12 gap-2">
           {/* Column 1 - Reflections and Calendar */}
-          <div className="col-span-2 flex flex-col space-y-2 h-[calc(100vh-24rem)]">
+          <div className="col-span-2 flex flex-col space-y-2 h-[calc(100vh-16rem)]">
             <DigitalClock />
             <Reflections selectedDay={selectedDay} />
             <div className="bg-white/80 rounded-xl shadow-lg p-3 border border-purple-200 flex-1">
-              <h2 className="text-lg font-semibold text-purple-600 mb-3 text-center">Calendar</h2>
+              <h2 className="text-xl font-semibold text-purple-600 mb-3 text-center">Calendar</h2>
               <div className="flex justify-center pb-2">
                 <MonthlyCalendar
                   onDaySelect={day => {
@@ -95,18 +103,13 @@ export default function UnifiedDashboard() {
             </div>
           </div>
 
-          {/* Column 2 - Day Mood Notes */}
-          <div className="col-span-3 h-[calc(100vh-24rem)]">
+          {/* Column 2 - Day Mood Notes and Weekly Chart */}
+          <div className="col-span-3 flex flex-col space-y-2 h-[calc(100vh-13rem)]">
             <DayMoodNotes 
               selectedDay={selectedDay}
             />
-          </div>
-
-          {/* Column 3 - Current Mood and Weekly Trends */}
-          <div className="col-span-3 flex flex-col space-y-2 h-[calc(100vh-24rem)]">
-            <MoodBox userMood={userMood} loading={loading} error={error} />
             <div className="bg-white/80 rounded-xl shadow-lg p-3 border border-purple-200 flex-1">
-              <h2 className="text-lg font-semibold text-purple-600 mb-2 text-center">Weekly Trends</h2>
+              <h2 className="text-xl font-semibold text-purple-600 mb-2 text-center">Weekly Chart</h2>
               <WeeklyChart
                 onDayClick={day => {
                   setSelectedDay(day);
@@ -121,8 +124,16 @@ export default function UnifiedDashboard() {
             </div>
           </div>
 
+          {/* Column 3 - Current Mood and GifBox */}
+          <div className="col-span-2 flex flex-col space-y-2 h-[calc(100vh-24rem)]">
+            <MoodBox userMood={userMood} loading={loading} error={error} />
+            <div className="flex-1">
+              <GifBox />
+            </div>
+          </div>
+
           {/* Column 4 - Insights */}
-          <div className="col-span-2 h-[calc(100vh-24rem)]">
+          <div className="col-span-3 h-[calc(100vh-24rem)]">
             <InsightsBox selectedDay={selectedDay} />
           </div>
 
@@ -132,26 +143,11 @@ export default function UnifiedDashboard() {
             <TopSongsBox userMood={userMood} loading={loading} error={error} />
           </div>
         </div>
-
-        {/* Footer with GifBox spanning columns 2-3 */}
-        <div className="mt-4 grid grid-cols-12 gap-2">
-          <div className="col-span-2">
-            {/* Empty space for column 1 */}
-          </div>
-          <div className="col-span-6">
-            <GifBox />
-          </div>
-          <div className="col-span-4">
-            {/* Empty space for columns 4-5 */}
-          </div>
-        </div>
       </div>
 
-      {/* Footer with creator credits */}
-      <div className="w-full bg-white/90 backdrop-blur-sm shadow-lg rounded-xl mt-4 p-3 border border-purple-200">
-        <div className="text-center text-sm text-gray-600">
-          Created by: Aaditya KP, Adithi Rao
-        </div>
+      {/* Footer - always at bottom */}
+      <div className="mt-4">
+        <Footer />
       </div>
     </div>
   );

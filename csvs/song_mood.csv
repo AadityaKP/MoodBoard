@@ -1,5 +1,5 @@
 Song Name,Artist,Final Mood,Frequency
-"Haule Haule","Salim–Sulaiman, Sukhwinder Singh, Jaideep Sahni","Happy and Energetic",2
+"Haule Haule","Salim–Sulaiman, Sukhwinder Singh, Jaideep Sahni","Happy and Energetic",3
 "Summertime Sadness (Lana Del Rey Vs. Cedric Gervais) - Cedric Gervais Remix","Lana Del Rey, Cedric Gervais","Sad and Energetic",1
 "drivers license","Olivia Rodrigo","Sad and Calm",1
 "Manwa Laage","Shreya Ghoshal, Arijit Singh","Sad and Energetic",1
@@ -7,7 +7,7 @@ Song Name,Artist,Final Mood,Frequency
 "Gallan Goodiyaan","Yashita Sharma, Manish Kumar Tipu, Farhan Akhtar, Shankar Mahadevan, Sukhwinder Singh","Happy and Energetic",1
 "Uptown Funk (feat. Bruno Mars)","Mark Ronson, Bruno Mars","Happy and Energetic",5
 "Sheila Ki Jawani","Vishal-Shekhar, Sunidhi Chauhan, Vishal Dadlani","Happy and Energetic",3
-"Chammak Challo","Vishal-Shekhar, Akon, Hamsika Iyer, Vishal Dadlani, Niranjan Iyengar","Happy and Energetic",2
+"Chammak Challo","Vishal-Shekhar, Akon, Hamsika Iyer, Vishal Dadlani, Niranjan Iyengar","Happy and Energetic",3
 "Deva Deva (From ","Brahmastra",")",Pritam," Arijit Singh"," Amitabh Bhattacharya"," Jonita Gandhi","Sad and Calm","1"
 "Tum Jo Aaye","Pritam, Rahat Fateh Ali Khan, Tulsi Kumar, Irshad Kamil","Happy and Energetic",3
 "Slow Motion","Vishal-Shekhar, Shreya Ghoshal, Nakash Aziz","Happy and Calm",1
@@ -24,9 +24,22 @@ Song Name,Artist,Final Mood,Frequency
 "Excuse Me Girl (Ambarsariya)","Arjun, Rekha Sawhney, Reality Raj, Ram Sampath","Happy and Energetic",1
 "Timber","Pitbull, Kesha","Happy and Energetic",1
 "Ye Ishq Hai","Pritam, Shreya Ghoshal, Irshad Kamil","Happy and Energetic",1
-"Uff Teri Adaa","Shankar Mahadevan, Alyssa Mendonsa","Unknown",1
-"Lat Lag Gayee","Benny Dayal, Shalmali Kholgade, Pritam","Unknown",1
-"Sunny Sunny","Yo Yo Honey Singh, Neha Kakkar","Unknown",1
-"Balam Pichkari","Pritam, Vishal Dadlani, Shalmali Kholgade","Unknown",1
-"Badtameez Dil","Pritam, Benny Dayal, Shefali Alvares","Unknown",1
-"Party On My Mind","Pritam, KK, Shefali Alvares, Yo Yo Honey Singh, Prashant Ingole","Unknown",1
+"Zingaat","Ajay-Atul","Happy and Energetic",1
+"Saturday Saturday","Shaarib Toshi, Badshah, Indeep Bakshi, Akriti Kakar","Happy and Energetic",1
+"Character Dheela","Pritam, Neeraj Shridhar, Amrita Kak","Happy and Energetic",1
+"Sucker","Jonas Brothers","Happy and Energetic",1
+"INDUSTRY BABY","Lil Nas X, Jack Harlow","Happy and Energetic",1
+"Everybody Dies In Their Nightmares","XXXTENTACION","Sad and Calm",1
+"Good Looking","Suki Waterhouse","Sad and Calm",1
+"Ajj Din Chadheya","Pritam, Rahat Fateh Ali Khan, Irshad Kamil","Sad and Calm",3
+"Teri Ore","Pritam, Rahat Fateh Ali Khan, Shreya Ghoshal, Mayur Puri","Sad and Energetic",1
+"If I Can't Have You","Shawn Mendes","Happy and Energetic",2
+"Lonely (with benny blanco)","Justin Bieber, benny blanco","Unknown",1
+"Feel Me","Selena Gomez","Unknown",1
+"Unforgettable","French Montana, Swae Lee","Unknown",1
+"Deva Deva (From ","Brahmastra")"","Pritam, Arijit Singh, Amitabh Bhattacharya, Jonita Gandhi",Sad and Calm,"1"
+"Shivers","Ed Sheeran","Unknown",2
+"Love Me Again","John Newman","Unknown",1
+"double take","Dhruv","Unknown",1
+"I Can’t Get Enough (benny blanco, Selena Gomez, J Balvin, Tainy)","benny blanco, Selena Gomez, J Balvin, Tainy","Unknown",1
+"Zaalima","Arijit Singh, Harshdeep Kaur","Unknown",1

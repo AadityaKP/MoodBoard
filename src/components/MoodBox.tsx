@@ -47,11 +47,32 @@ const MoodBox = ({ userMood, loading, error }: any) => {
   const moods = moodDistribution.moods || [];
   const moodKey = getMoodKey(mood);
 
+  // Mood legend data
+  const MOOD_KEY = [
+    { mood: 'Happy + Calm', color: '#ff0054' },
+    { mood: 'Happy + Energetic', color: '#ff5400' },
+    { mood: 'Sad + Calm', color: '#9e0059' },
+    { mood: 'Sad + Energetic', color: '#390099' }
+  ];
+
   return (
     <div className="rounded-lg p-4 bg-blue-100 text-blue-900 shadow flex flex-col items-center h-full">
-      <h2 className="text-lg font-bold mb-2">Your Current Mood</h2>
+      <h2 className="text-xl font-semibold text-purple-600 mb-3 text-center">Your Current Mood</h2>
       <div className="text-2xl mb-2">{mood}</div>
       <MoodBar moods={moods || []} />
+      
+      {/* Mood Color Legend */}
+      <div className="mt-4 w-full">
+        <h3 className="text-base font-semibold text-center mb-2">Legend</h3>
+        <div className="space-y-1">
+          {MOOD_KEY.map(({ mood, color }) => (
+            <div key={mood} className="flex items-center gap-2 px-2 py-1 rounded text-sm">
+              <span className="w-3 h-3 rounded-full border border-gray-400" style={{ backgroundColor: color }}></span>
+              <span className="font-medium text-sm text-gray-800">{mood}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useDailyMoods, useDailyNotes, useMoodLoading, useMoodError } from '../hooks/useMoodService';
 
 interface DayMoodNotesProps {
@@ -63,8 +63,19 @@ export default function DayMoodNotes({
   // Note: Daily data refresh is now handled by the parent component
   // when selectedDay changes, so we don't need to call it here
 
-  // Process notes data
-  const notes = (() => {
+  // Helper function to split notes by | and format them
+  const formatNotes = useMemo(() => {
+    return (notesText: string): string[] => {
+      if (!notesText || notesText.trim() === '') {
+        return ['No notes'];
+      }
+      const notesArray = notesText.split('|').map(note => note.trim()).filter(note => note);
+      return notesArray.length > 0 ? notesArray : ['No notes'];
+    };
+  }, []);
+
+  // Process notes data with useMemo to prevent infinite re-renders
+  const notes = useMemo(() => {
     const notesArr = Array.isArray(dailyNotes.notes) ? dailyNotes.notes : [];
     const notesBySection: Record<string, string> = {};
     for (const section of SECTIONS.map(s => s.key)) {
@@ -72,16 +83,7 @@ export default function DayMoodNotes({
       notesBySection[section] = found ? found.note : '';
     }
     return notesBySection;
-  })();
-
-  // Helper function to split notes by | and format them
-  const formatNotes = (notesText: string): string[] => {
-    if (!notesText || notesText.trim() === '') {
-      return ['No notes'];
-    }
-    const notesArray = notesText.split('|').map(note => note.trim()).filter(note => note);
-    return notesArray.length > 0 ? notesArray : ['No notes'];
-  };
+  }, [dailyNotes.notes]);
 
   if (loading) {
     return (
@@ -107,45 +109,33 @@ export default function DayMoodNotes({
   }
 
   return (
-    <div className="bg-white/80 rounded-xl shadow-lg p-3 border border-purple-200 h-full">
-      <h2 className="text-lg font-semibold text-purple-600 mb-3 text-center">
-        Day Mood Notes
+    <div className="bg-white/80 rounded-xl shadow-lg p-4 border border-purple-200 h-[500px]">
+      <h2 className="text-xl font-semibold text-purple-600 mb-3 text-center">
+        Your Notes
       </h2>
-      
-      {/* Mood Color Key - moved under heading */}
-      <div className="mb-3 px-2">
-        <div className="grid grid-cols-2 gap-2">
-          {MOOD_KEY.map(({ mood, color }) => (
-            <div key={mood} className={`flex items-center justify-center gap-1 px-1 py-1 rounded text-xs ${color}`}>
-              <span className="w-2 h-2 inline-block rounded-full border border-gray-400" style={{ background: 'inherit' }}></span>
-              <span className="font-medium text-xs truncate">{mood}</span>
-            </div>
-          ))}
-        </div>
-      </div>
       
       <div className="flex flex-col h-full">
         {/* 2x2 Grid Layout */}
-        <div className="flex-1 grid grid-cols-2 gap-2 p-2">
+        <div className="h-80 grid grid-cols-2 gap-3 p-1">
           {SECTIONS.map((section, i) => {
             const moodKey = getMoodKey(dailyMoods.data[section.key]);
             return (
               <div
                 key={section.key}
-                className={`${COLORS[i]} rounded-lg shadow-md p-2 flex flex-col cursor-pointer transition-all duration-200 hover:shadow-lg aspect-square ${selectedSection === section.key ? 'ring-2 ring-purple-400' : ''}`}
+                className={`${COLORS[i]} rounded-lg shadow-md p-3 flex flex-col cursor-pointer transition-all duration-200 hover:shadow-lg ${selectedSection === section.key ? 'ring-2 ring-purple-400' : ''}`}
                 onMouseEnter={() => setSelectedSection(section.key)}
                 onMouseLeave={() => setSelectedSection(null)}
               >
                 {/* Mood Color Bar */}
-                <div className={`w-full h-2 rounded-full mb-1 ${MOOD_COLORS[moodKey] || MOOD_COLORS['unknown']}`}></div>
+                <div className={`w-full h-1 rounded-full mb-1 ${MOOD_COLORS[moodKey] || MOOD_COLORS['unknown']}`}></div>
                 
                 {/* Section Title */}
-                <div className="font-bold capitalize text-xs mb-1 text-gray-800">
+                <div className="font-bold capitalize text-base mb-1 text-gray-800">
                   {section.key}
                 </div>
                 
                 {/* Notes Content */}
-                <div className="flex-1 text-xs text-gray-700 overflow-hidden leading-tight">
+                <div className="flex-1 text-base text-gray-700 overflow-hidden leading-relaxed">
                   {formatNotes(notes[section.key]).map((note, index) => (
                     <div key={index} className="mb-1">{note}</div>
                   ))}

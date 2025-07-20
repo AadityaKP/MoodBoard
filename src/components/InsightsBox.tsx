@@ -167,64 +167,59 @@ export default function InsightsBox({ selectedDay }: InsightsBoxProps) {
 
   // Analyze weekly mood trends
   const analyzeWeeklyMoods = (): MoodAnalysis[] => {
-    if (!weeklyTrends?.trends || weeklyTrends.trends.length === 0) {
-      return [];
-    }
-
-    const timeChunks = ['morning', 'afternoon', 'evening', 'night'];
-    const analyses: MoodAnalysis[] = [];
-
-    timeChunks.forEach(chunk => {
-      // Extract moods for this chunk across all days
-      const chunkMoods: string[] = [];
-      weeklyTrends.trends.forEach(day => {
-        if (day.moods && day.moods[chunk]) {
-          chunkMoods.push(String(day.moods[chunk]));
-        }
-      });
-
-      if (chunkMoods.length === 0) return;
-
-      // Calculate frequency
-      const moodCounts: Record<string, number> = {};
-      chunkMoods.forEach(mood => {
-        moodCounts[mood] = (moodCounts[mood] || 0) + 1;
-      });
-
-      // Find top mood
-      const topMood = Object.entries(moodCounts).reduce((a, b) => 
-        (moodCounts[a[0]] || 0) > (moodCounts[b[0]] || 0) ? a : b
-      )[0];
-      const frequency = moodCounts[topMood];
-
-      // Calculate consistency
-      const consistency = Math.round((frequency / 7) * 100) / 100;
-
-      // Get content from mapping
-      const contentKey = `${chunk}_${topMood}`;
-      const content = moodContentMap[contentKey] || {
-        insight: "No specific insight available for this mood pattern.",
-        suggestions: ["Continue tracking your moods to get personalized insights."]
-      };
-
-      // Check for warning
-      let warning: string | undefined;
-      if ((topMood === 'sad calm' || topMood === 'sad energetic') && frequency >= 4) {
-        warning = `⚠ You've experienced ${topMood} ${frequency} times this week — this could be affecting your well-being. Try reviewing your ${chunk} routine.`;
+    // Hardcoded insights for demonstration
+    const hardcodedAnalyses: MoodAnalysis[] = [
+      {
+        timeChunk: 'morning',
+        topMood: 'happy energetic',
+        frequency: 5,
+        consistency: 0.71,
+        insight: "Mornings are your superpower! You wake up with energy and drive — perfect for tackling creative or focused work.",
+        suggestions: [
+          "Block distractions and start deep work early",
+          "Consider an early workout or idea brainstorming", 
+          "Reflect at the end of the day on what worked best"
+        ]
+      },
+      {
+        timeChunk: 'afternoon',
+        topMood: 'happy energetic',
+        frequency: 4,
+        consistency: 0.57,
+        insight: "Your energy peaks in the afternoon — this is your productivity window!",
+        suggestions: [
+          "Plan key work between 2–5 PM",
+          "Say no to low-priority tasks here",
+          "Take breaks before and after the peak zone"
+        ]
+      },
+      {
+        timeChunk: 'evening',
+        topMood: 'happy energetic',
+        frequency: 3,
+        consistency: 0.43,
+        insight: "You're energized in the evening — this can be great for hobbies or workouts, but be mindful of late stimulation.",
+        suggestions: [
+          "Wrap up activities an hour before bed",
+          "Use the burst for creativity or social time",
+          "Try switching to slower-paced content after 9 PM"
+        ]
+      },
+      {
+        timeChunk: 'night',
+        topMood: 'sad energetic',
+        frequency: 2,
+        consistency: 0.29,
+        insight: "Your mind seems active and restless late at night. This could disrupt your sleep quality.",
+        suggestions: [
+          "Reduce screen brightness or turn on Night Mode",
+          "Try calming teas like chamomile",
+          "Stretch or do deep breathing before bed"
+        ]
       }
+    ];
 
-      analyses.push({
-        timeChunk: chunk,
-        topMood,
-        frequency,
-        consistency,
-        insight: content.insight,
-        suggestions: content.suggestions,
-        warning
-      });
-    });
-
-    return analyses;
+    return hardcodedAnalyses;
   };
   if (loading) {
     return (
@@ -250,8 +245,8 @@ export default function InsightsBox({ selectedDay }: InsightsBoxProps) {
 
 
   return (
-    <div className="bg-white/80 rounded-xl shadow-lg p-3 border border-purple-200 h-full flex flex-col">
-      <h2 className="text-lg font-semibold text-purple-600 mb-3 text-center">Weekly Trends</h2>
+    <div className="bg-white/80 rounded-xl shadow-lg p-3 border border-purple-200 h-[782px] flex flex-col">
+      <h2 className="text-xl font-semibold text-purple-600 mb-3 text-center">Insights</h2>
       
       <div className="flex-1 space-y-3 overflow-y-auto">
         {analyzeWeeklyMoods().map((analysis, index) => (
@@ -259,7 +254,7 @@ export default function InsightsBox({ selectedDay }: InsightsBoxProps) {
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-bold text-purple-700 capitalize">
-                🕒 {analysis.timeChunk} TRENDS
+                {analysis.timeChunk.toUpperCase()} TRENDS
               </h3>
               <span className="text-sm text-gray-500">
                 Consistency: {analysis.consistency}
@@ -269,21 +264,21 @@ export default function InsightsBox({ selectedDay }: InsightsBoxProps) {
             {/* Mood Info */}
             <div className="mb-3">
               <div className="text-sm text-gray-700">
-                Most frequent mood: {getMoodEmoji(analysis.topMood)} {analysis.topMood} ({analysis.frequency} out of 7)
+                Most frequent mood: {analysis.topMood} ({analysis.frequency} out of 7)
               </div>
             </div>
             
             {/* Insight */}
             <div className="mb-3">
               <div className="text-sm text-gray-700 bg-white p-3 rounded border-l-4 border-purple-300">
-                <span className="font-medium">💬 Insight:</span> {analysis.insight}
+                <span className="font-medium">Insight:</span> {analysis.insight}
               </div>
             </div>
             
             {/* Suggestions */}
             <div className="mb-3">
               <div className="text-sm text-gray-700 bg-white p-3 rounded border-l-4 border-green-300">
-                <span className="font-medium">✅ Suggestions:</span>
+                <span className="font-medium">Suggestions:</span>
                 <ul className="mt-2 space-y-2">
                   {analysis.suggestions.map((suggestion, idx) => (
                     <li key={idx} className="ml-4">• {suggestion}</li>
