@@ -1,15 +1,22 @@
 import React from 'react';
 
-export default function GifBox() {
+const GifBox: React.FC = () => {
   return (
-    <div className="bg-white/80 rounded-xl shadow-lg p-3 border border-purple-200 aspect-square">
-      <div className="h-full flex items-center justify-center">
+    <div className="bg-white/80 rounded-xl shadow-lg p-3 border border-purple-200 h-full flex flex-col">
+      <h2 className="text-xl font-semibold text-purple-600 mb-3 text-center">Mood Visual</h2>
+      <div className="flex-1 flex items-center justify-center">
         <img 
-          src="/CSVS/warmer_days___lofi_cat__good_mood_lofi_hip_hop_mix___.gif" 
-          alt="Mountain Animation"
-          className="w-full h-full object-cover rounded-lg"
+          src="/CSVS/3483-mountainz.gif" 
+          alt="Mood visualization"
+          className="max-w-full max-h-full rounded-lg shadow-md"
+          style={{ objectFit: 'contain' }}
         />
+      </div>
+      <div className="text-center mt-2">
+        <p className="text-sm text-gray-600">Let your mood flow like the mountains</p>
       </div>
     </div>
   );
-} 
+};
+
+export default GifBox; 
