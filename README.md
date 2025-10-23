@@ -1,73 +1,197 @@
-# Welcome to your Lovable project
+# 🎵 MoodBoard - Music Mood Tracking Application
 
-## Project info
+A comprehensive music mood tracking application that analyzes your music listening patterns and provides insights into your emotional states using machine learning and Spotify integration.
 
-**URL**: https://lovable.dev/projects/b010faee-79c4-47f2-b798-c2c3459a8bac
+## 🌟 Features
 
-## How can I edit this code?
+- **Real-time Mood Analysis**: AI-powered mood classification of songs
+- **Spotify Integration**: Seamless music playback and analysis
+- **Interactive Dashboard**: Beautiful 5-column layout with mood tracking
+- **Weekly Trends**: Visual charts showing mood patterns over time
+- **Calendar Integration**: Monthly mood tracking and reflections
+- **Music Player**: Built-in player with mood analysis
+- **Insights Engine**: AI-powered recommendations and insights
 
-There are several ways of editing your application.
+## 🚀 Quick Start
 
-**Use Lovable**
+### Prerequisites
+- Node.js (v18+)
+- Python (v3.8+)
+- FFmpeg (for audio processing)
+- Spotify Developer Account
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b010faee-79c4-47f2-b798-c2c3459a8bac) and start prompting.
+### Installation
 
-Changes made via Lovable will be committed automatically to this repo.
+1. **Clone or extract this package**
+2. **Run the quick start script** (Windows):
+   ```bash
+   quick-start.bat
+   ```
+   
+   Or manually install dependencies:
+   ```bash
+   npm install
+   pip install -r requirements.txt
+   ```
 
-**Use your preferred IDE**
+3. **Configure environment**:
+   - Copy `env-template.txt` to `.env`
+   - Add your Spotify API credentials
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+4. **Start all services**:
+   ```bash
+   start-all-services.bat
+   ```
+   
+   Or start manually:
+   ```bash
+   # Terminal 1: Backend server
+   node server.js
+   
+   # Terminal 2: Frontend dev server
+   npm run dev
+   
+   # Terminal 3: ML API server
+   python ML/ml_api.py
+   ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+5. **Open your browser** to `http://localhost:5173` (frontend) or `http://localhost:3000` (backend)
 
-Follow these steps:
+## 📁 Project Structure
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+MoodBoard-Project-Package/
+├── src/                    # React frontend
+│   ├── components/         # UI components
+│   ├── pages/             # Page components
+│   ├── services/          # API services
+│   └── hooks/             # Custom hooks
+├── ML/                    # Machine learning
+│   ├── ml_api.py          # ML API server
+│   ├── song_mood_classifier.py
+│   └── song_mood_xgb_model_updated.pkl
+├── CSVS/                  # Data files
+├── UserPlaylist/          # Demo music files
+├── public/                # Static assets
+├── server.js              # Express backend
+├── requirements.txt       # Python dependencies
+└── SETUP_INSTRUCTIONS.md  # Detailed setup guide
 ```
 
-**Edit a file directly in GitHub**
+## 🎯 Key Components
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Frontend (React + TypeScript)
+- **Dashboard**: Unified mood tracking interface
+- **Music Player**: Spotify-integrated player
+- **Charts**: Recharts-based visualizations
+- **Calendar**: Monthly mood tracking
+- **UI Components**: Shadcn/ui component library
 
-**Use GitHub Codespaces**
+### Backend (Node.js + Express)
+- **RESTful API**: Data endpoints
+- **Spotify Integration**: OAuth and playback control
+- **File Management**: CSV data persistence
+- **CORS Support**: Cross-origin requests
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Machine Learning (Python)
+- **XGBoost Model**: Song mood classification
+- **Audio Analysis**: FFmpeg-based feature extraction
+- **Real-time Processing**: Live mood analysis
+- **Flask API**: ML model serving
 
-## What technologies are used for this project?
+## 🔧 Configuration
 
-This project is built with:
+### Environment Variables
+Create a `.env` file with:
+```env
+SPOTIFY_CLIENT_ID=your_client_id
+SPOTIFY_CLIENT_SECRET=your_client_secret
+SPOTIFY_REDIRECT_URI=http://localhost:3000/callback
+PORT=3000
+NODE_ENV=development
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Spotify API Setup
+1. Visit [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Create a new application
+3. Get Client ID and Secret
+4. Add redirect URI: `http://localhost:3000/callback`
 
-## How can I deploy this project?
+## 📊 Data Management
 
-Simply open [Lovable](https://lovable.dev/projects/b010faee-79c4-47f2-b798-c2c3459a8bac) and click on Share -> Publish.
+The application uses CSV files for data storage:
+- `listening_history.csv`: Music listening history
+- `song_mood.csv`: Pre-classified song moods
+- `user_mood.csv`: User mood entries
+- `song_chunk_analysis.csv`: Audio analysis data
 
-## Can I connect a custom domain to my Lovable project?
+## 🎨 UI/UX Features
 
-Yes, you can!
+- **Responsive Design**: Works on desktop and mobile
+- **Dark/Light Mode**: Theme switching support
+- **Real-time Updates**: Live data synchronization
+- **Interactive Charts**: Hover effects and animations
+- **Accessibility**: ARIA labels and keyboard navigation
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 🔒 Security
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- Environment variable protection
+- CORS configuration
+- Secure API key management
+- Input validation and sanitization
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **Spotify Authentication Fails**
+   - Verify API credentials
+   - Check redirect URI
+   - Ensure app is in development mode
+
+2. **ML Model Errors**
+   - Install Python dependencies
+   - Verify FFmpeg installation
+   - Check model file exists
+
+3. **Port Conflicts**
+   - Change PORT in .env
+   - Kill existing processes
+
+### Debug Mode
+Enable debug logging:
+```env
+DEBUG=true
+NODE_ENV=development
+```
+
+## 📈 Performance
+
+- **Caching**: Frequently accessed data
+- **Optimization**: ML model inference speed
+- **CDN Ready**: Static asset optimization
+- **Database Indexing**: Large dataset support
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch
+3. Make changes
+4. Test thoroughly
+5. Submit pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+## 📞 Support
+
+- Check troubleshooting section
+- Review setup instructions
+- Create GitHub issue
+
+---
+
+**Made with ❤️ for music lovers everywhere**
+
+*Track your mood, understand your music, discover yourself.*
